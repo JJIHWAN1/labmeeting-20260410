@@ -1,0 +1,1416 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>20260410 랩미팅 - 서울시 실시간 도시 데이터 대시보드</title>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Fira+Code:wght@400;500&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+        font-family: 'Noto Sans KR', sans-serif;
+        background: #0a0a0a;
+        color: #e0e0e0;
+        overflow: hidden;
+        height: 100vh;
+    }
+
+    .slide {
+        display: none;
+        width: 100vw;
+        height: 100vh;
+        padding: 60px 80px;
+        flex-direction: column;
+        justify-content: center;
+    }
+    .slide.active { display: flex; }
+
+    /* 타이틀 슬라이드 */
+    .slide.title-slide {
+        background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+        align-items: center;
+        text-align: center;
+    }
+    .slide.title-slide h1 {
+        font-size: 52px;
+        font-weight: 900;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 16px;
+    }
+    .slide.title-slide .subtitle {
+        font-size: 24px;
+        color: #aaa;
+        margin-bottom: 40px;
+    }
+    .slide.title-slide .meta {
+        font-size: 18px;
+        color: #888;
+    }
+    .slide.title-slide .meta span {
+        margin: 0 12px;
+    }
+
+    /* 일반 슬라이드 */
+    .slide h2 {
+        font-size: 36px;
+        font-weight: 700;
+        margin-bottom: 8px;
+        color: #fff;
+    }
+    .slide .slide-subtitle {
+        font-size: 16px;
+        color: #667eea;
+        margin-bottom: 36px;
+        font-weight: 500;
+    }
+
+    /* 섹션 구분 슬라이드 */
+    .slide.section-slide {
+        background: linear-gradient(135deg, #1a1a2e, #16213e);
+        align-items: center;
+        text-align: center;
+    }
+    .slide.section-slide .section-number {
+        font-size: 80px;
+        font-weight: 900;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 12px;
+    }
+    .slide.section-slide h2 {
+        font-size: 44px;
+        margin-bottom: 12px;
+    }
+    .slide.section-slide .section-desc {
+        font-size: 20px;
+        color: #999;
+    }
+
+    /* 콘텐츠 그리드 */
+    .content-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 32px;
+        flex: 1;
+    }
+    .content-grid.single {
+        grid-template-columns: 1fr;
+    }
+
+    .content-box {
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 16px;
+        padding: 28px;
+    }
+    .content-box h3 {
+        font-size: 20px;
+        font-weight: 700;
+        color: #667eea;
+        margin-bottom: 16px;
+    }
+    .content-box ul {
+        list-style: none;
+        padding: 0;
+    }
+    .content-box ul li {
+        padding: 6px 0;
+        font-size: 16px;
+        line-height: 1.6;
+        color: #ccc;
+        position: relative;
+        padding-left: 20px;
+    }
+    .content-box ul li::before {
+        content: '•';
+        position: absolute;
+        left: 0;
+        color: #667eea;
+        font-weight: bold;
+    }
+
+    code, .code {
+        font-family: 'Fira Code', monospace;
+        background: rgba(102,126,234,0.15);
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 14px;
+        color: #a5b4fc;
+    }
+
+    .code-block {
+        background: #1a1a2e;
+        border: 1px solid rgba(102,126,234,0.2);
+        border-radius: 12px;
+        padding: 20px 24px;
+        font-family: 'Fira Code', monospace;
+        font-size: 15px;
+        line-height: 1.7;
+        color: #c5c5d2;
+        margin: 12px 0;
+        white-space: pre;
+    }
+
+    .highlight { color: #667eea; font-weight: 700; }
+    .highlight-green { color: #4CAF50; font-weight: 600; }
+    .highlight-orange { color: #FF9800; font-weight: 600; }
+    .highlight-red { color: #FF6B6B; font-weight: 600; }
+
+    /* 표 */
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 12px 0;
+    }
+    th, td {
+        padding: 12px 16px;
+        text-align: left;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+        font-size: 15px;
+    }
+    th {
+        background: rgba(102,126,234,0.15);
+        color: #667eea;
+        font-weight: 700;
+        font-size: 14px;
+    }
+    td { color: #ccc; }
+
+    /* 플로우 다이어그램 */
+    .flow {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        justify-content: center;
+        margin: 20px 0;
+        flex-wrap: wrap;
+    }
+    .flow-item {
+        background: linear-gradient(135deg, rgba(102,126,234,0.2), rgba(118,75,162,0.2));
+        border: 1px solid rgba(102,126,234,0.3);
+        border-radius: 12px;
+        padding: 14px 22px;
+        font-size: 15px;
+        font-weight: 600;
+        color: #e0e0e0;
+        text-align: center;
+    }
+    .flow-arrow {
+        font-size: 24px;
+        color: #667eea;
+        padding: 0 8px;
+    }
+
+    /* 비교 카드 */
+    .compare-row {
+        display: flex;
+        gap: 24px;
+        margin: 16px 0;
+    }
+    .compare-card {
+        flex: 1;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+    }
+    .compare-card .label {
+        font-size: 13px;
+        color: #999;
+        margin-bottom: 8px;
+    }
+    .compare-card .value {
+        font-family: 'Fira Code', monospace;
+        font-size: 15px;
+        color: #a5b4fc;
+    }
+
+    /* 네비게이션 */
+    .nav {
+        position: fixed;
+        bottom: 24px;
+        right: 32px;
+        display: flex;
+        gap: 12px;
+        z-index: 100;
+    }
+    .nav button {
+        background: rgba(102,126,234,0.2);
+        border: 1px solid rgba(102,126,234,0.3);
+        color: #667eea;
+        padding: 10px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        font-family: 'Noto Sans KR', sans-serif;
+        transition: all 0.2s;
+    }
+    .nav button:hover {
+        background: rgba(102,126,234,0.4);
+        color: #fff;
+    }
+
+    .page-indicator {
+        position: fixed;
+        bottom: 28px;
+        left: 32px;
+        font-size: 14px;
+        color: #555;
+        z-index: 100;
+    }
+
+    /* 키 포인트 */
+    .key-point {
+        background: linear-gradient(135deg, rgba(102,126,234,0.1), rgba(118,75,162,0.1));
+        border-left: 4px solid #667eea;
+        padding: 16px 24px;
+        border-radius: 0 12px 12px 0;
+        margin: 16px 0;
+        font-size: 17px;
+        line-height: 1.6;
+    }
+
+    .tag {
+        display: inline-block;
+        background: rgba(102,126,234,0.2);
+        color: #a5b4fc;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 500;
+        margin-right: 8px;
+    }
+    .tag.green { background: rgba(76,175,80,0.2); color: #81c784; }
+    .tag.orange { background: rgba(255,152,0,0.2); color: #ffb74d; }
+
+    /* ===== 목업 스타일 ===== */
+    .mockup-container {
+        background: #f5f5f5;
+        border-radius: 16px;
+        padding: 12px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        position: relative;
+        overflow: hidden;
+        min-height: 0;
+    }
+    .mockup-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 8px;
+        flex-shrink: 0;
+    }
+    .mockup-header .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .mockup-header .dot.r { background: #ff5f57; }
+    .mockup-header .dot.y { background: #febc2e; }
+    .mockup-header .dot.g { background: #28c840; }
+    .mockup-header .url-bar {
+        flex: 1;
+        background: #e0e0e0;
+        border-radius: 6px;
+        padding: 4px 12px;
+        font-size: 11px;
+        color: #666;
+        font-family: 'Fira Code', monospace;
+    }
+    .mockup-topbar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        background: white;
+        border-radius: 8px;
+        flex-shrink: 0;
+    }
+    .mockup-topbar .area-name {
+        font-size: 13px;
+        font-weight: 700;
+        color: #333;
+    }
+    .mockup-topbar .period-btns {
+        display: flex;
+        gap: 4px;
+        margin-left: auto;
+    }
+    .mockup-topbar .period-btn {
+        padding: 3px 10px;
+        border-radius: 12px;
+        font-size: 10px;
+        background: #f0f0f0;
+        color: #888;
+    }
+    .mockup-topbar .period-btn.active {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+    }
+    .mockup-summary {
+        display: flex;
+        gap: 6px;
+        flex-shrink: 0;
+    }
+    .mockup-summary-card {
+        flex: 1;
+        background: white;
+        border-radius: 8px;
+        padding: 6px 8px;
+        text-align: center;
+    }
+    .mockup-summary-card .ms-label { font-size: 8px; color: #999; }
+    .mockup-summary-card .ms-value { font-size: 13px; font-weight: 700; color: #333; }
+    .mockup-summary-card .ms-sub { font-size: 8px; color: #667eea; }
+    .mockup-main-chart {
+        flex: 1;
+        background: white;
+        border-radius: 10px;
+        padding: 10px 14px;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+    }
+    .mockup-main-chart .mc-title { font-size: 13px; font-weight: 700; color: #333; }
+    .mockup-main-chart .mc-sub { font-size: 9px; color: #999; margin-bottom: 4px; }
+    .mockup-chart-area {
+        flex: 1;
+        position: relative;
+        overflow: hidden;
+    }
+    .mockup-brush {
+        height: 24px;
+        background: #f8f9fa;
+        border-radius: 6px;
+        border: 1px solid #e0e0e0;
+        position: relative;
+        flex-shrink: 0;
+    }
+    .mockup-brush-line {
+        position: absolute;
+        top: 6px;
+        left: 10%;
+        right: 10%;
+        height: calc(100% - 12px);
+    }
+    .mockup-brush-window {
+        position: absolute;
+        top: 0; bottom: 0;
+        left: 20%;
+        width: 40%;
+        background: rgba(102,126,234,0.12);
+        border-left: 2px solid #667eea;
+        border-right: 2px solid #667eea;
+    }
+    .mockup-brush-handle {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 6px;
+        height: 16px;
+        background: #667eea;
+        border-radius: 3px;
+    }
+    .mockup-thumb-row {
+        display: flex;
+        gap: 6px;
+        height: 120px;
+        flex-shrink: 0;
+    }
+    .mockup-thumb {
+        flex: 1;
+        background: white;
+        border-radius: 8px;
+        padding: 6px 8px;
+        display: flex;
+        flex-direction: column;
+        border: 2px solid transparent;
+        transition: all 0.2s;
+        overflow: hidden;
+    }
+    .mockup-thumb.hovered {
+        border-color: #667eea;
+        box-shadow: 0 2px 8px rgba(102,126,234,0.25);
+        transform: translateY(-2px);
+    }
+    .mockup-thumb .mt-title { font-size: 8px; color: #555; white-space: nowrap; }
+    .mockup-thumb .mt-chart { flex: 1; position: relative; overflow: hidden; }
+
+    /* 드래그 줌 오버레이 */
+    .drag-zoom-overlay {
+        position: absolute;
+        top: 10%;
+        bottom: 5%;
+        left: 35%;
+        width: 30%;
+        background: rgba(102,126,234,0.12);
+        border: 1px solid rgba(102,126,234,0.4);
+        border-radius: 4px;
+        z-index: 2;
+    }
+
+    /* 크로스헤어 */
+    .crosshair-line {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 55%;
+        width: 1px;
+        border-left: 2px dashed #667eea;
+        opacity: 0.6;
+        z-index: 2;
+    }
+    .crosshair-tooltip {
+        position: absolute;
+        top: 15%;
+        left: 57%;
+        background: rgba(30,30,30,0.9);
+        border-radius: 6px;
+        padding: 8px 12px;
+        font-size: 10px;
+        color: #fff;
+        white-space: nowrap;
+        z-index: 3;
+    }
+
+    /* 목업 라벨 */
+    .mockup-label {
+        position: absolute;
+        background: rgba(102,126,234,0.9);
+        color: white;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+        z-index: 10;
+        white-space: nowrap;
+    }
+    .mockup-label.top-right { top: -12px; right: 16px; }
+    .mockup-label.bottom-center { bottom: -12px; left: 50%; transform: translateX(-50%); }
+
+    .mockup-side-label {
+        text-align: center;
+        margin-top: 12px;
+        font-size: 15px;
+        font-weight: 600;
+    }
+    .anno-badge {
+        position: absolute;
+        width: 22px; height: 22px;
+        border-radius: 50%;
+        background: #667eea;
+        color: #fff;
+        font-size: 11px; font-weight: 700;
+        display: flex; align-items: center; justify-content: center;
+        z-index: 10;
+        box-shadow: 0 2px 8px rgba(102,126,234,0.5);
+    }
+    .anno-legend {
+        display: flex; flex-direction: column; gap: 10px;
+        font-size: 13px; color: #ccc;
+    }
+    .anno-legend-item {
+        display: flex; align-items: flex-start; gap: 8px;
+    }
+    .anno-legend-num {
+        width: 20px; height: 20px; min-width: 20px;
+        border-radius: 50%;
+        background: #667eea; color: #fff;
+        font-size: 10px; font-weight: 700;
+        display: flex; align-items: center; justify-content: center;
+    }
+</style>
+</head>
+<body>
+
+<!-- 슬라이드 1: 타이틀 -->
+<div class="slide title-slide active" id="s1">
+    <h1>서울시 실시간 도시 데이터 대시보드</h1>
+    <div class="subtitle">데이터 분석 사이트 개선 & 시스템 모듈화 구축</div>
+    <div style="margin-top:16px;font-size:15px;color:#888;font-family:'Fira Code',monospace;letter-spacing:0.5px;">https://seoul-city-dashboard.pages.dev/chart</div>
+    <div class="meta">
+        <span>2026.04.10</span>
+        <span>|</span>
+        <span>랩미팅 발표</span>
+        <span>|</span>
+        <span>김지환</span>
+    </div>
+</div>
+
+<!-- 슬라이드 2: 목차 -->
+<div class="slide" id="s2">
+    <h2>📋 발표 내용</h2>
+    <div class="slide-subtitle">이번 주 진행한 내용</div>
+    <div class="content-grid single">
+        <div style="display:flex;flex-direction:column;gap:16px;max-width:800px;">
+            <div class="content-box" style="display:flex;align-items:center;gap:20px;">
+                <span style="font-size:36px;font-weight:900;color:#667eea;">01</span>
+                <div>
+                    <div style="font-size:20px;font-weight:700;color:#fff;">싱글 페이지 레이아웃</div>
+                    <div style="font-size:14px;color:#999;">스크롤 없이 한 화면에 모든 차트 표시</div>
+                </div>
+            </div>
+            <div class="content-box" style="display:flex;align-items:center;gap:20px;">
+                <span style="font-size:36px;font-weight:900;color:#667eea;">02</span>
+                <div>
+                    <div style="font-size:20px;font-weight:700;color:#fff;">대화형 시각화 구현</div>
+                    <div style="font-size:14px;color:#999;">드래그 줌, 브러시, 크로스헤어, 줌 리셋</div>
+                </div>
+            </div>
+            <div class="content-box" style="display:flex;align-items:center;gap:20px;">
+                <span style="font-size:36px;font-weight:900;color:#667eea;">03</span>
+                <div>
+                    <div style="font-size:20px;font-weight:700;color:#fff;">데이터 스무딩 (이동평균)</div>
+                    <div style="font-size:14px;color:#999;">가중 이동평균으로 그래프를 부드러운 곡선으로</div>
+                </div>
+            </div>
+            <div class="content-box" style="display:flex;align-items:center;gap:20px;">
+                <span style="font-size:36px;font-weight:900;color:#667eea;">04</span>
+                <div>
+                    <div style="font-size:20px;font-weight:700;color:#fff;">배포 환경 변경</div>
+                    <div style="font-size:14px;color:#999;">Netlify → Cloudflare Pages 마이그레이션</div>
+                </div>
+            </div>
+            <div class="content-box" style="display:flex;align-items:center;gap:20px;">
+                <span style="font-size:36px;font-weight:900;color:#667eea;">05</span>
+                <div>
+                    <div style="font-size:20px;font-weight:700;color:#fff;">시스템 모듈화 구축</div>
+                    <div style="font-size:14px;color:#999;">어댑터 패턴으로 데이터 소스 교체 가능한 구조를 직접 설계·제작</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 슬라이드 3: 섹션 1 -->
+<div class="slide section-slide" id="s3">
+    <div class="section-number">01</div>
+    <h2>싱글 페이지 레이아웃</h2>
+    <div class="section-desc">스크롤 없이 한 화면에 모든 차트 표시</div>
+</div>
+
+<!-- 슬라이드 4: 싱글 페이지 레이아웃 — 목업 + 설명 -->
+<div class="slide" id="s4">
+    <h2>싱글 페이지 레이아웃 — 구현 결과</h2>
+    <div style="display:flex;gap:20px;flex:1;min-height:0;">
+        <!-- 목업 (실제 UI 재현) -->
+        <div class="mockup-container" style="flex:1;position:relative;">
+            <div class="mockup-header">
+                <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+                <div class="url-bar">seoul-city-dashboard.pages.dev/chart</div>
+            </div>
+            <!-- ① 100vh 전체 영역 표시 -->
+            <div class="anno-badge" style="top:2px;left:-8px;">1</div>
+            <!-- 헤더 + 컨트롤 -->
+            <div style="background:linear-gradient(135deg,#3b1f8e,#667eea);padding:5px 12px;display:flex;align-items:center;gap:8px;">
+                <span style="color:#fff;font-size:10px;">← 홈</span>
+                <span style="color:#fff;font-size:11px;font-weight:600;">데이터 분석</span>
+            </div>
+            <div style="background:#fff;padding:4px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #eee;">
+                <span style="background:#f5f5f5;padding:2px 6px;border-radius:4px;font-size:9px;">광화문·덕수궁 ▾</span>
+                <div style="display:flex;gap:2px;">
+                    <span style="padding:2px 5px;font-size:8px;border-radius:3px;background:#667eea;color:#fff;">3일</span>
+                    <span style="padding:2px 5px;font-size:8px;border-radius:3px;background:#f5f5f5;color:#666;">7일</span>
+                </div>
+            </div>
+            <!-- ② AQ 배너 + 요약 카드 -->
+            <div style="background:#fff;padding:4px 10px;display:flex;gap:6px;border-bottom:1px solid #eee;position:relative;">
+                <div style="background:linear-gradient(135deg,#4CAF50,#66BB6A);border-radius:6px;padding:3px 8px;flex:1;">
+                    <div style="font-size:7px;color:rgba(255,255,255,0.8);">대기질</div>
+                    <div style="font-size:11px;font-weight:700;color:#fff;">좋음 😊</div>
+                </div>
+                <div style="background:#f8f9fa;border-radius:6px;padding:3px 8px;flex:1;text-align:center;">
+                    <div style="font-size:6px;color:#999;">평균 인구</div>
+                    <div style="font-size:10px;font-weight:700;color:#333;">108,420</div>
+                </div>
+                <div style="background:#f8f9fa;border-radius:6px;padding:3px 8px;flex:1;text-align:center;">
+                    <div style="font-size:6px;color:#999;">평균 속도</div>
+                    <div style="font-size:10px;font-weight:700;color:#333;">18.5km/h</div>
+                </div>
+                <div style="background:#f8f9fa;border-radius:6px;padding:3px 8px;flex:1;text-align:center;">
+                    <div style="font-size:6px;color:#999;">PM2.5</div>
+                    <div style="font-size:10px;font-weight:700;color:#333;">24㎍/㎥</div>
+                </div>
+            </div>
+            <!-- ② 메인 차트 (선택 지표의 시계열 데이터 표시) -->
+            <div class="mockup-main-chart" style="position:relative;flex:1;">
+                <div class="mc-title">👥 인구 추이</div>
+                <div class="mc-sub">최소~최대 범위</div>
+                <div class="mockup-chart-area">
+                    <svg width="100%" height="100%" viewBox="0 0 600 200" preserveAspectRatio="none" style="position:absolute;top:0;left:0;">
+                        <defs>
+                            <linearGradient id="popFill5" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#FF6B6B" stop-opacity="0.10"/>
+                                <stop offset="100%" stop-color="#FF6B6B" stop-opacity="0.01"/>
+                            </linearGradient>
+                        </defs>
+                        <line x1="0" y1="40" x2="600" y2="40" stroke="#f0f0f0" stroke-width="0.6"/>
+                        <line x1="0" y1="80" x2="600" y2="80" stroke="#f0f0f0" stroke-width="0.6"/>
+                        <line x1="0" y1="120" x2="600" y2="120" stroke="#f0f0f0" stroke-width="0.6"/>
+                        <line x1="0" y1="160" x2="600" y2="160" stroke="#f0f0f0" stroke-width="0.6"/>
+                        <path d="M0,110 C20,100 40,60 75,40 C110,22 130,25 150,55 C170,90 185,140 210,160 C230,172 250,168 270,130 C290,90 305,45 330,30 C355,18 370,22 390,50 C410,85 425,135 450,158 C470,170 490,162 510,125 C530,85 550,42 570,28 C585,20 595,25 600,30 L600,50 C595,48 585,42 570,52 C550,68 530,112 510,148 C490,178 470,186 450,176 C425,158 410,110 390,76 C370,48 355,42 330,55 C305,72 290,118 270,155 C250,185 230,190 210,180 C185,162 170,115 150,82 C130,52 110,48 75,65 C40,85 20,125 0,135 Z" fill="url(#popFill5)"/>
+                        <path d="M0,110 C20,100 40,60 75,40 C110,22 130,25 150,55 C170,90 185,140 210,160 C230,172 250,168 270,130 C290,90 305,45 330,30 C355,18 370,22 390,50 C410,85 425,135 450,158 C470,170 490,162 510,125 C530,85 550,42 570,28 C585,20 595,25 600,30" fill="none" stroke="#FF6B6B" stroke-width="2"/>
+                        <path d="M0,135 C20,125 40,85 75,65 C110,48 130,52 150,82 C170,115 185,162 210,180 C230,190 250,185 270,155 C290,118 305,72 330,55 C355,42 370,48 390,76 C410,110 425,158 450,176 C470,186 490,178 510,148 C530,112 550,68 570,52 C585,42 595,48 600,50" fill="none" stroke="#2196F3" stroke-width="2"/>
+                    </svg>
+                    <div style="position:absolute;right:8px;top:4px;display:flex;gap:12px;font-size:8px;color:#999;">
+                        <span><span style="color:#2196F3;">□</span> 인구 (최소)</span>
+                        <span><span style="color:#FF6B6B;">□</span> 인구 (최대)</span>
+                    </div>
+                </div>
+                <div class="anno-badge" style="top:4px;left:-8px;">2</div>
+            </div>
+            <!-- ④ 브러시 (레인지 슬라이더) -->
+            <div class="mockup-brush" style="position:relative;">
+                <svg width="100%" height="100%" viewBox="0 0 600 24" preserveAspectRatio="none" style="position:absolute;top:0;left:0;">
+                    <path d="M0,20 C100,19 200,18 300,14 C400,9 500,5 600,3" fill="none" stroke="#2196F3" stroke-width="1.2" opacity="0.4"/>
+                    <path d="M0,18 C100,17 200,16 300,12 C400,7 500,4 600,2" fill="none" stroke="#FF6B6B" stroke-width="1.2" opacity="0.4"/>
+                </svg>
+                <div class="mockup-brush-window" style="left:55%;width:30%;"></div>
+                <div class="mockup-brush-handle" style="left:calc(55% - 3px);"></div>
+                <div class="mockup-brush-handle" style="left:calc(85% - 3px);"></div>
+            </div>
+            <!-- ③ 썸네일 행 (130px 고정) -->
+            <div class="mockup-thumb-row" style="position:relative;">
+                <div class="mockup-thumb">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1px;">
+                        <span class="mt-title">🚗 도로</span>
+                        <span style="font-size:5px;display:flex;align-items:center;gap:2px;"><span style="color:#F44336;">■</span><span style="color:#999;">평균속도</span></span>
+                    </div>
+                    <div class="mt-chart"><svg width="100%" height="100%" viewBox="0 0 160 68">
+                        <text x="1" y="7" font-size="4" fill="#bbb">km/h</text>
+                        <text x="2" y="15" font-size="4" fill="#ccc">25</text>
+                        <text x="2" y="27" font-size="4" fill="#ccc">20</text>
+                        <text x="2" y="39" font-size="4" fill="#ccc">15</text>
+                        <text x="2" y="51" font-size="4" fill="#ccc">10</text>
+                        <line x1="14" y1="13" x2="155" y2="13" stroke="#f3f3f3" stroke-width="0.4"/>
+                        <line x1="14" y1="25" x2="155" y2="25" stroke="#f3f3f3" stroke-width="0.4"/>
+                        <line x1="14" y1="37" x2="155" y2="37" stroke="#f3f3f3" stroke-width="0.4"/>
+                        <line x1="14" y1="49" x2="155" y2="49" stroke="#f3f3f3" stroke-width="0.4"/>
+                        <path d="M14,37 C20,34 24,28 30,25 C36,30 40,40 46,46 C50,42 54,34 60,26 C64,24 68,28 72,34 C76,40 80,46 86,48 C90,42 94,32 100,26 C104,24 108,28 112,34 C116,40 120,44 126,42 C130,36 134,28 140,24 C144,22 148,26 152,30 L155,28" fill="none" stroke="#FF9800" stroke-width="1.5"/>
+                        <text x="20" y="64" font-size="4.5" fill="#bbb">04/05</text>
+                        <text x="70" y="64" font-size="4.5" fill="#bbb">04/06</text>
+                        <text x="125" y="64" font-size="4.5" fill="#bbb">04/07</text>
+                    </svg></div>
+                </div>
+                <div class="mockup-thumb">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1px;">
+                        <span class="mt-title">🌡️ 기온·습도</span>
+                        <span style="font-size:5px;display:flex;align-items:center;gap:3px;"><span style="color:#FF9800;">■</span><span style="color:#999;">기온</span><span style="color:#2196F3;">■</span><span style="color:#999;">습도</span></span>
+                    </div>
+                    <div class="mt-chart"><svg width="100%" height="100%" viewBox="0 0 160 68">
+                        <text x="1" y="7" font-size="4" fill="#bbb">℃</text>
+                        <text x="2" y="15" font-size="4" fill="#ccc">20</text>
+                        <text x="2" y="37" font-size="4" fill="#ccc">10</text>
+                        <text x="2" y="56" font-size="4" fill="#ccc">0</text>
+                        <text x="148" y="7" font-size="4" fill="#bbb">%</text>
+                        <text x="148" y="15" font-size="4" fill="#ccc">100</text>
+                        <text x="148" y="37" font-size="4" fill="#ccc">50</text>
+                        <text x="148" y="56" font-size="4" fill="#ccc">0</text>
+                        <line x1="14" y1="13" x2="145" y2="13" stroke="#f3f3f3" stroke-width="0.4"/>
+                        <line x1="14" y1="35" x2="145" y2="35" stroke="#f3f3f3" stroke-width="0.4"/>
+                        <line x1="14" y1="54" x2="145" y2="54" stroke="#f3f3f3" stroke-width="0.4"/>
+                        <path d="M14,40 C20,34 26,22 32,18 C38,24 44,38 50,44 C56,36 62,22 68,18 C74,24 80,38 86,42 C92,34 98,22 104,18 C110,22 116,34 122,38 C128,32 134,22 140,20 L145,24" fill="none" stroke="#FF9800" stroke-width="1.3"/>
+                        <path d="M14,34 C26,36 38,32 50,28 C62,32 74,36 86,34 C98,30 110,28 122,32 C134,34 140,30 145,32" fill="none" stroke="#2196F3" stroke-width="1.2" opacity="0.6"/>
+                        <text x="20" y="64" font-size="4.5" fill="#bbb">04/05</text>
+                        <text x="65" y="64" font-size="4.5" fill="#bbb">04/06</text>
+                        <text x="115" y="64" font-size="4.5" fill="#bbb">04/07</text>
+                    </svg></div>
+                </div>
+                <div class="mockup-thumb">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1px;">
+                        <span class="mt-title">💨 PM2.5</span>
+                        <span style="font-size:5px;display:flex;align-items:center;gap:3px;"><span style="color:#e91e63;">■</span><span style="color:#999;">PM2.5</span><span style="color:#F44336;">--</span><span style="color:#999;">나쁨 (36)</span></span>
+                    </div>
+                    <div class="mt-chart"><svg width="100%" height="100%" viewBox="0 0 160 68">
+                        <text x="1" y="7" font-size="4" fill="#bbb">㎍/㎥</text>
+                        <text x="2" y="17" font-size="4" fill="#ccc">50</text>
+                        <text x="2" y="28" font-size="4" fill="#ccc">40</text>
+                        <text x="2" y="39" font-size="4" fill="#ccc">30</text>
+                        <text x="2" y="50" font-size="4" fill="#ccc">20</text>
+                        <text x="2" y="57" font-size="4" fill="#ccc">10</text>
+                        <line x1="16" y1="15" x2="155" y2="15" stroke="#f3f3f3" stroke-width="0.4"/>
+                        <line x1="16" y1="26" x2="155" y2="26" stroke="#f3f3f3" stroke-width="0.4"/>
+                        <line x1="16" y1="37" x2="155" y2="37" stroke="#f3f3f3" stroke-width="0.4"/>
+                        <line x1="16" y1="48" x2="155" y2="48" stroke="#f3f3f3" stroke-width="0.4"/>
+                        <line x1="16" y1="22" x2="155" y2="22" stroke="#F44336" stroke-width="0.6" stroke-dasharray="3,2"/>
+                        <path d="M16,48 C28,46 40,44 52,42 C58,40 64,38 70,36 C76,40 82,44 88,46 C94,42 100,38 106,34 C112,30 118,28 124,24 C130,28 136,36 142,40 C148,38 152,34 155,30" fill="none" stroke="#e91e63" stroke-width="1.5"/>
+                        <text x="22" y="64" font-size="4.5" fill="#bbb">04/05</text>
+                        <text x="72" y="64" font-size="4.5" fill="#bbb">04/06</text>
+                        <text x="128" y="64" font-size="4.5" fill="#bbb">04/07</text>
+                    </svg></div>
+                </div>
+                <div class="mockup-thumb">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1px;">
+                        <span class="mt-title">💨 PM10</span>
+                        <span style="font-size:5px;display:flex;align-items:center;gap:3px;"><span style="color:#e91e63;">■</span><span style="color:#999;">PM10</span><span style="color:#F44336;">--</span><span style="color:#999;">나쁨 (81)</span></span>
+                    </div>
+                    <div class="mt-chart"><svg width="100%" height="100%" viewBox="0 0 160 68">
+                        <text x="1" y="7" font-size="4" fill="#bbb">㎍/㎥</text>
+                        <text x="2" y="15" font-size="4" fill="#ccc">100</text>
+                        <text x="2" y="37" font-size="4" fill="#ccc">50</text>
+                        <text x="2" y="56" font-size="4" fill="#ccc">0</text>
+                        <line x1="18" y1="13" x2="155" y2="13" stroke="#f3f3f3" stroke-width="0.4"/>
+                        <line x1="18" y1="35" x2="155" y2="35" stroke="#f3f3f3" stroke-width="0.4"/>
+                        <line x1="18" y1="54" x2="155" y2="54" stroke="#f3f3f3" stroke-width="0.4"/>
+                        <line x1="18" y1="18" x2="155" y2="18" stroke="#F44336" stroke-width="0.6" stroke-dasharray="3,2"/>
+                        <path d="M18,44 C30,42 42,40 54,38 C66,40 78,42 90,44 C102,42 114,38 126,36 C132,38 138,42 144,44 C150,42 153,40 155,38" fill="none" stroke="#e91e63" stroke-width="1.5"/>
+                        <text x="24" y="64" font-size="4.5" fill="#bbb">04/05</text>
+                        <text x="74" y="64" font-size="4.5" fill="#bbb">04/06</text>
+                        <text x="130" y="64" font-size="4.5" fill="#bbb">04/07</text>
+                    </svg></div>
+                </div>
+                <div class="mockup-thumb">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1px;">
+                        <span class="mt-title">🚲 따릉이</span>
+                        <span style="font-size:5px;display:flex;align-items:center;gap:2px;"><span style="color:#2196F3;">■</span><span style="color:#999;">따릉이 잔여</span></span>
+                    </div>
+                    <div class="mt-chart"><svg width="100%" height="100%" viewBox="0 0 160 68">
+                        <text x="1" y="7" font-size="4" fill="#bbb">대</text>
+                        <text x="2" y="15" font-size="4" fill="#ccc">400</text>
+                        <text x="2" y="37" font-size="4" fill="#ccc">200</text>
+                        <text x="2" y="56" font-size="4" fill="#ccc">0</text>
+                        <line x1="18" y1="13" x2="155" y2="13" stroke="#f3f3f3" stroke-width="0.4"/>
+                        <line x1="18" y1="35" x2="155" y2="35" stroke="#f3f3f3" stroke-width="0.4"/>
+                        <line x1="18" y1="54" x2="155" y2="54" stroke="#f3f3f3" stroke-width="0.4"/>
+                        <path d="M18,40 C30,38 42,36 54,34 C66,32 78,30 90,28 C102,26 112,22 122,18 C130,14 138,12 145,10 C150,10 153,12 155,14" fill="none" stroke="#2196F3" stroke-width="1.5"/>
+                        <text x="24" y="64" font-size="4.5" fill="#bbb">04/05</text>
+                        <text x="74" y="64" font-size="4.5" fill="#bbb">04/06</text>
+                        <text x="130" y="64" font-size="4.5" fill="#bbb">04/07</text>
+                    </svg></div>
+                </div>
+                <div class="anno-badge" style="top:-8px;left:50%;transform:translateX(-50%);">3</div>
+            </div>
+        </div>
+        <!-- 어노테이션 범례 -->
+        <div style="width:200px;display:flex;flex-direction:column;justify-content:center;">
+            <div class="anno-legend">
+                <div class="anno-legend-item">
+                    <div class="anno-legend-num">1</div>
+                    <div><strong style="color:#fff;">100vh 단일 페이지</strong><br>스크롤 없이 모든 정보 표시</div>
+                </div>
+                <div class="anno-legend-item">
+                    <div class="anno-legend-num">2</div>
+                    <div><strong style="color:#fff;">메인 차트</strong><br>선택한 지표의 시계열 그래프<br>화면 중앙에 가장 크게 표시</div>
+                </div>
+                <div class="anno-legend-item">
+                    <div class="anno-legend-num">3</div>
+                    <div><strong style="color:#fff;">썸네일 행 (130px)</strong><br>클릭 시 메인 차트와 교체</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 슬라이드 6: 섹션 2 -->
+<div class="slide section-slide" id="s6">
+    <div class="section-number">02</div>
+    <h2>대화형 시각화 구현</h2>
+    <div class="section-desc">4가지 인터랙션 기능</div>
+</div>
+
+<!-- 슬라이드 7: 대화형 시각화 목업 -->
+<div class="slide" id="s7">
+    <h2>대화형 시각화 — 구현 결과</h2>
+    <div style="display:flex;gap:20px;flex:1;min-height:0;">
+        <!-- 목업 (실제 UI 재현) -->
+        <div class="mockup-container" style="flex:1;position:relative;">
+            <div class="mockup-header">
+                <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+                <div class="url-bar">seoul-city-dashboard.pages.dev/chart</div>
+            </div>
+            <!-- 헤더 + 컨트롤 -->
+            <div style="background:linear-gradient(135deg,#3b1f8e,#667eea);padding:5px 12px;display:flex;align-items:center;gap:8px;">
+                <span style="color:#fff;font-size:10px;">← 홈</span>
+                <span style="color:#fff;font-size:11px;font-weight:600;">데이터 분석</span>
+            </div>
+            <div style="background:#fff;padding:4px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #eee;">
+                <span style="background:#f5f5f5;padding:2px 6px;border-radius:4px;font-size:9px;">광화문·덕수궁 ▾</span>
+                <div style="display:flex;gap:2px;">
+                    <span style="padding:2px 5px;font-size:8px;border-radius:3px;background:#667eea;color:#fff;">3일</span>
+                    <span style="padding:2px 5px;font-size:8px;border-radius:3px;background:#f5f5f5;color:#666;">7일</span>
+                </div>
+            </div>
+            <!-- 메인 차트 (인구 추이) + 인터랙션 표시 -->
+            <div class="mockup-main-chart" style="position:relative;flex:1;">
+                <div class="mc-title">👥 인구 추이</div>
+                <div class="mc-sub">최소~최대 범위</div>
+                <div class="mockup-chart-area">
+                    <svg width="100%" height="100%" viewBox="0 0 600 200" preserveAspectRatio="none" style="position:absolute;top:0;left:0;">
+                        <defs>
+                            <linearGradient id="popFill8" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#FF6B6B" stop-opacity="0.10"/>
+                                <stop offset="100%" stop-color="#FF6B6B" stop-opacity="0.01"/>
+                            </linearGradient>
+                        </defs>
+                        <line x1="0" y1="40" x2="600" y2="40" stroke="#f0f0f0" stroke-width="0.6"/>
+                        <line x1="0" y1="80" x2="600" y2="80" stroke="#f0f0f0" stroke-width="0.6"/>
+                        <line x1="0" y1="120" x2="600" y2="120" stroke="#f0f0f0" stroke-width="0.6"/>
+                        <line x1="0" y1="160" x2="600" y2="160" stroke="#f0f0f0" stroke-width="0.6"/>
+                        <path d="M0,110 C20,100 40,60 75,40 C110,22 130,25 150,55 C170,90 185,140 210,160 C230,172 250,168 270,130 C290,90 305,45 330,30 C355,18 370,22 390,50 C410,85 425,135 450,158 C470,170 490,162 510,125 C530,85 550,42 570,28 C585,20 595,25 600,30 L600,50 C595,48 585,42 570,52 C550,68 530,112 510,148 C490,178 470,186 450,176 C425,158 410,110 390,76 C370,48 355,42 330,55 C305,72 290,118 270,155 C250,185 230,190 210,180 C185,162 170,115 150,82 C130,52 110,48 75,65 C40,85 20,125 0,135 Z" fill="url(#popFill8)"/>
+                        <path d="M0,110 C20,100 40,60 75,40 C110,22 130,25 150,55 C170,90 185,140 210,160 C230,172 250,168 270,130 C290,90 305,45 330,30 C355,18 370,22 390,50 C410,85 425,135 450,158 C470,170 490,162 510,125 C530,85 550,42 570,28 C585,20 595,25 600,30" fill="none" stroke="#FF6B6B" stroke-width="2"/>
+                        <path d="M0,135 C20,125 40,85 75,65 C110,48 130,52 150,82 C170,115 185,162 210,180 C230,190 250,185 270,155 C290,118 305,72 330,55 C355,42 370,48 390,76 C410,110 425,158 450,176 C470,186 490,178 510,148 C530,112 550,68 570,52 C585,42 595,48 600,50" fill="none" stroke="#2196F3" stroke-width="2"/>
+                    </svg>
+                    <!-- ① 드래그 줌 영역 -->
+                    <div class="drag-zoom-overlay" style="left:25%;width:30%;">
+                        <div style="position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:8px;color:#667eea;font-weight:600;white-space:nowrap;">🔍 드래그로 선택</div>
+                    </div>
+                    <!-- ③ 크로스헤어 -->
+                    <div class="crosshair-line" style="left:62%;"></div>
+                    <!-- ③ 커스텀 툴팁 -->
+                    <div class="crosshair-tooltip" style="left:64%;top:15%;">
+                        <div style="font-weight:600;margin-bottom:3px;border-bottom:1px solid rgba(255,255,255,0.15);padding-bottom:2px;font-size:10px;">2026. 4. 7. 오후 1:24</div>
+                        <div style="margin-bottom:2px;font-size:10px;"><span style="color:#2196F3;">□</span> 인구 (최소): 110,500</div>
+                        <div style="font-size:10px;"><span style="color:#FF6B6B;">□</span> 인구 (최대): 115,200</div>
+                    </div>
+                    <div style="position:absolute;right:8px;top:4px;display:flex;gap:12px;font-size:8px;color:#999;">
+                        <span><span style="color:#2196F3;">□</span> 인구 (최소)</span>
+                        <span><span style="color:#FF6B6B;">□</span> 인구 (최대)</span>
+                    </div>
+                </div>
+                <div class="anno-badge" style="top:4px;left:-8px;">1</div>
+                <div class="anno-badge" style="top:30%;right:-8px;">3</div>
+            </div>
+            <!-- ② 브러시 -->
+            <div class="mockup-brush" style="position:relative;">
+                <svg width="100%" height="100%" viewBox="0 0 600 24" preserveAspectRatio="none" style="position:absolute;top:0;left:0;">
+                    <path d="M0,20 C100,19 200,18 300,14 C400,9 500,5 600,3" fill="none" stroke="#2196F3" stroke-width="1.2" opacity="0.4"/>
+                    <path d="M0,18 C100,17 200,16 300,12 C400,7 500,4 600,2" fill="none" stroke="#FF6B6B" stroke-width="1.2" opacity="0.4"/>
+                </svg>
+                <div class="mockup-brush-window" style="left:55%;width:30%;"></div>
+                <div class="mockup-brush-handle" style="left:calc(55% - 3px);"></div>
+                <div class="mockup-brush-handle" style="left:calc(85% - 3px);"></div>
+                <div class="anno-badge" style="top:-8px;right:-6px;">2</div>
+            </div>
+            <!-- 썸네일 행 -->
+            <div class="mockup-thumb-row">
+                <!-- 도로 평균속도 -->
+                <div class="mockup-thumb">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1px;">
+                        <span class="mt-title">🚗 도로</span>
+                        <span style="font-size:5px;display:flex;align-items:center;gap:2px;"><span style="color:#F44336;">■</span><span style="color:#999;">평균속도</span></span>
+                    </div>
+                    <div class="mt-chart"><svg width="100%" height="100%" viewBox="0 0 160 68">
+                        <text x="1" y="7" font-size="4" fill="#bbb">km/h</text>
+                        <text x="2" y="15" font-size="4" fill="#ccc">25</text>
+                        <text x="2" y="27" font-size="4" fill="#ccc">20</text>
+                        <text x="2" y="39" font-size="4" fill="#ccc">15</text>
+                        <text x="2" y="51" font-size="4" fill="#ccc">10</text>
+                        <line x1="14" y1="13" x2="155" y2="13" stroke="#f3f3f3" stroke-width="0.4"/>
+                        <line x1="14" y1="25" x2="155" y2="25" stroke="#f3f3f3" stroke-width="0.4"/>
+                        <line x1="14" y1="37" x2="155" y2="37" stroke="#f3f3f3" stroke-width="0.4"/>
+                        <line x1="14" y1="49" x2="155" y2="49" stroke="#f3f3f3" stroke-width="0.4"/>
+                        <path d="M14,37 C20,34 24,28 30,25 C36,30 40,40 46,46 C50,42 54,34 60,26 C64,24 68,28 72,34 C76,40 80,46 86,48 C90,42 94,32 100,26 C104,24 108,28 112,34 C116,40 120,44 126,42 C130,36 134,28 140,24 C144,22 148,26 152,30 L155,28" fill="none" stroke="#FF9800" stroke-width="1.5"/>
+                        <text x="20" y="64" font-size="4.5" fill="#bbb">04/05</text>
+                        <text x="70" y="64" font-size="4.5" fill="#bbb">04/06</text>
+                        <text x="125" y="64" font-size="4.5" fill="#bbb">04/07</text>
+                    </svg></div>
+                </div>
+                <!-- 기온·습도 -->
+                <div class="mockup-thumb">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1px;">
+                        <span class="mt-title">🌡️ 기온·습도</span>
+                        <span style="font-size:5px;display:flex;align-items:center;gap:3px;"><span style="color:#FF9800;">■</span><span style="color:#999;">기온</span><span style="color:#2196F3;">■</span><span style="color:#999;">습도</span></span>
+                    </div>
+                    <div class="mt-chart"><svg width="100%" height="100%" viewBox="0 0 160 68">
+                        <text x="1" y="7" font-size="4" fill="#bbb">℃</text>
+                        <text x="2" y="15" font-size="4" fill="#ccc">20</text>
+                        <text x="2" y="37" font-size="4" fill="#ccc">10</text>
+                        <text x="2" y="56" font-size="4" fill="#ccc">0</text>
+                        <text x="148" y="7" font-size="4" fill="#bbb">%</text>
+                        <text x="148" y="15" font-size="4" fill="#ccc">100</text>
+                        <text x="148" y="37" font-size="4" fill="#ccc">50</text>
+                        <text x="148" y="56" font-size="4" fill="#ccc">0</text>
+                        <line x1="14" y1="13" x2="145" y2="13" stroke="#f3f3f3" stroke-width="0.4"/>
+                        <line x1="14" y1="35" x2="145" y2="35" stroke="#f3f3f3" stroke-width="0.4"/>
+                        <line x1="14" y1="54" x2="145" y2="54" stroke="#f3f3f3" stroke-width="0.4"/>
+                        <path d="M14,40 C20,34 26,22 32,18 C38,24 44,38 50,44 C56,36 62,22 68,18 C74,24 80,38 86,42 C92,34 98,22 104,18 C110,22 116,34 122,38 C128,32 134,22 140,20 L145,24" fill="none" stroke="#FF9800" stroke-width="1.3"/>
+                        <path d="M14,34 C26,36 38,32 50,28 C62,32 74,36 86,34 C98,30 110,28 122,32 C134,34 140,30 145,32" fill="none" stroke="#2196F3" stroke-width="1.2" opacity="0.6"/>
+                        <text x="20" y="64" font-size="4.5" fill="#bbb">04/05</text>
+                        <text x="65" y="64" font-size="4.5" fill="#bbb">04/06</text>
+                        <text x="115" y="64" font-size="4.5" fill="#bbb">04/07</text>
+                    </svg></div>
+                </div>
+                <!-- PM2.5 -->
+                <div class="mockup-thumb">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1px;">
+                        <span class="mt-title">💨 PM2.5</span>
+                        <span style="font-size:5px;display:flex;align-items:center;gap:3px;"><span style="color:#e91e63;">■</span><span style="color:#999;">PM2.5</span><span style="color:#F44336;">--</span><span style="color:#999;">나쁨 (36)</span></span>
+                    </div>
+                    <div class="mt-chart"><svg width="100%" height="100%" viewBox="0 0 160 68">
+                        <text x="1" y="7" font-size="4" fill="#bbb">㎍/㎥</text>
+                        <text x="2" y="17" font-size="4" fill="#ccc">50</text>
+                        <text x="2" y="28" font-size="4" fill="#ccc">40</text>
+                        <text x="2" y="39" font-size="4" fill="#ccc">30</text>
+                        <text x="2" y="50" font-size="4" fill="#ccc">20</text>
+                        <text x="2" y="57" font-size="4" fill="#ccc">10</text>
+                        <line x1="16" y1="15" x2="155" y2="15" stroke="#f3f3f3" stroke-width="0.4"/>
+                        <line x1="16" y1="26" x2="155" y2="26" stroke="#f3f3f3" stroke-width="0.4"/>
+                        <line x1="16" y1="37" x2="155" y2="37" stroke="#f3f3f3" stroke-width="0.4"/>
+                        <line x1="16" y1="48" x2="155" y2="48" stroke="#f3f3f3" stroke-width="0.4"/>
+                        <line x1="16" y1="22" x2="155" y2="22" stroke="#F44336" stroke-width="0.6" stroke-dasharray="3,2"/>
+                        <path d="M16,48 C28,46 40,44 52,42 C58,40 64,38 70,36 C76,40 82,44 88,46 C94,42 100,38 106,34 C112,30 118,28 124,24 C130,28 136,36 142,40 C148,38 152,34 155,30" fill="none" stroke="#e91e63" stroke-width="1.5"/>
+                        <text x="22" y="64" font-size="4.5" fill="#bbb">04/05</text>
+                        <text x="72" y="64" font-size="4.5" fill="#bbb">04/06</text>
+                        <text x="128" y="64" font-size="4.5" fill="#bbb">04/07</text>
+                    </svg></div>
+                </div>
+                <!-- PM10 -->
+                <div class="mockup-thumb">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1px;">
+                        <span class="mt-title">💨 PM10</span>
+                        <span style="font-size:5px;display:flex;align-items:center;gap:3px;"><span style="color:#e91e63;">■</span><span style="color:#999;">PM10</span><span style="color:#F44336;">--</span><span style="color:#999;">나쁨 (81)</span></span>
+                    </div>
+                    <div class="mt-chart"><svg width="100%" height="100%" viewBox="0 0 160 68">
+                        <text x="1" y="7" font-size="4" fill="#bbb">㎍/㎥</text>
+                        <text x="2" y="15" font-size="4" fill="#ccc">100</text>
+                        <text x="2" y="37" font-size="4" fill="#ccc">50</text>
+                        <text x="2" y="56" font-size="4" fill="#ccc">0</text>
+                        <line x1="18" y1="13" x2="155" y2="13" stroke="#f3f3f3" stroke-width="0.4"/>
+                        <line x1="18" y1="35" x2="155" y2="35" stroke="#f3f3f3" stroke-width="0.4"/>
+                        <line x1="18" y1="54" x2="155" y2="54" stroke="#f3f3f3" stroke-width="0.4"/>
+                        <line x1="18" y1="18" x2="155" y2="18" stroke="#F44336" stroke-width="0.6" stroke-dasharray="3,2"/>
+                        <path d="M18,44 C30,42 42,40 54,38 C66,40 78,42 90,44 C102,42 114,38 126,36 C132,38 138,42 144,44 C150,42 153,40 155,38" fill="none" stroke="#e91e63" stroke-width="1.5"/>
+                        <text x="24" y="64" font-size="4.5" fill="#bbb">04/05</text>
+                        <text x="74" y="64" font-size="4.5" fill="#bbb">04/06</text>
+                        <text x="130" y="64" font-size="4.5" fill="#bbb">04/07</text>
+                    </svg></div>
+                </div>
+                <!-- 따릉이 -->
+                <div class="mockup-thumb">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1px;">
+                        <span class="mt-title">🚲 따릉이</span>
+                        <span style="font-size:5px;display:flex;align-items:center;gap:2px;"><span style="color:#2196F3;">■</span><span style="color:#999;">따릉이 잔여</span></span>
+                    </div>
+                    <div class="mt-chart"><svg width="100%" height="100%" viewBox="0 0 160 68">
+                        <text x="1" y="7" font-size="4" fill="#bbb">대</text>
+                        <text x="2" y="15" font-size="4" fill="#ccc">400</text>
+                        <text x="2" y="37" font-size="4" fill="#ccc">200</text>
+                        <text x="2" y="56" font-size="4" fill="#ccc">0</text>
+                        <line x1="18" y1="13" x2="155" y2="13" stroke="#f3f3f3" stroke-width="0.4"/>
+                        <line x1="18" y1="35" x2="155" y2="35" stroke="#f3f3f3" stroke-width="0.4"/>
+                        <line x1="18" y1="54" x2="155" y2="54" stroke="#f3f3f3" stroke-width="0.4"/>
+                        <path d="M18,40 C30,38 42,36 54,34 C66,32 78,30 90,28 C102,26 112,22 122,18 C130,14 138,12 145,10 C150,10 153,12 155,14" fill="none" stroke="#2196F3" stroke-width="1.5"/>
+                        <text x="24" y="64" font-size="4.5" fill="#bbb">04/05</text>
+                        <text x="74" y="64" font-size="4.5" fill="#bbb">04/06</text>
+                        <text x="130" y="64" font-size="4.5" fill="#bbb">04/07</text>
+                    </svg></div>
+                </div>
+            </div>
+            <!-- ④ 더블클릭 리셋 안내 -->
+            <div style="text-align:center;padding:4px;background:rgba(102,126,234,0.08);border-radius:0 0 8px 8px;font-size:9px;color:#667eea;font-weight:600;position:relative;">
+                🖱️🖱️ 더블클릭 → 줌 리셋 (전체 범위로 복원)
+                <div class="anno-badge" style="top:-6px;right:-6px;">4</div>
+            </div>
+        </div>
+        <!-- 어노테이션 범례 -->
+        <div style="width:200px;display:flex;flex-direction:column;justify-content:center;">
+            <div class="anno-legend">
+                <div class="anno-legend-item">
+                    <div class="anno-legend-num">1</div>
+                    <div><strong style="color:#fff;">드래그 줌</strong><br>chartjs-plugin-zoom<br>X축 드래그로 시간 범위 확대</div>
+                </div>
+                <div class="anno-legend-item">
+                    <div class="anno-legend-num">2</div>
+                    <div><strong style="color:#fff;">레인지 슬라이더 (브러시)</strong><br>핸들 드래그로 범위 선택<br>차트 줌과 양방향 동기화</div>
+                </div>
+                <div class="anno-legend-item">
+                    <div class="anno-legend-num">3</div>
+                    <div><strong style="color:#fff;">크로스헤어 + 툴팁</strong><br>보라색 점선 세로선<br>커스텀 HTML 툴팁 표시</div>
+                </div>
+                <div class="anno-legend-item">
+                    <div class="anno-legend-num">4</div>
+                    <div><strong style="color:#fff;">더블클릭 줌 리셋</strong><br>원래 범위로 애니메이션 복원<br>브러시도 자동 전체 리셋</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 슬라이드 9: 섹션 3 -->
+<div class="slide section-slide" id="s9">
+    <div class="section-number">03</div>
+    <h2>데이터 스무딩</h2>
+    <div class="section-desc">가중 이동평균 (Weighted Moving Average)</div>
+</div>
+
+<!-- 슬라이드 10: 이동평균 상세 -->
+<div class="slide" id="s10">
+    <h2>데이터 스무딩 — 이동평균</h2>
+    <div class="slide-subtitle">10분 간격 계단식 데이터를 부드러운 곡선으로 변환</div>
+    <div class="content-grid">
+        <div class="content-box">
+            <h3>📊 왜 필요한가?</h3>
+            <ul>
+                <li>데이터가 10분마다 갱신 → 계단식 그래프</li>
+                <li>이동평균은 일정 기간 동안의 평균을 선으로 연결</li>
+                <li>주식/코인의 기술적 분석 지표와 동일한 원리</li>
+            </ul>
+            <div class="key-point" style="margin-top:16px;">
+                이동평균 = 노이즈를 제거하고<br>전체 추세를 파악하기 위한 기법
+            </div>
+        </div>
+        <div class="content-box">
+            <h3>⚙️ 적용 방식</h3>
+            <ul>
+                <li><code>smoothData()</code> 함수 — 가중 이동평균</li>
+                <li>윈도우 크기: <code>windowSize = 7</code> (앞뒤 3개씩 ≈ 70분)</li>
+                <li>중앙값에 가장 높은 가중치, 양쪽 끝으로 갈수록 감소</li>
+            </ul>
+            <div class="compare-row" style="margin-top:16px;">
+                <div class="compare-card">
+                    <div class="label">원래 데이터 (계단)</div>
+                    <div class="value">14000 → 14000 → 8000 → 8000</div>
+                </div>
+                <div class="compare-card">
+                    <div class="label">스무딩 후 (곡선)</div>
+                    <div class="value">14000 → 12300 → 9600 → 8400</div>
+                </div>
+            </div>
+        </div>
+        <div class="content-box" style="grid-column: 1 / -1;">
+            <h3>🎯 적용 대상</h3>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;">
+                <span class="tag">인구 최소/최대</span>
+                <span class="tag">도로 속도</span>
+                <span class="tag">기온</span>
+                <span class="tag">습도</span>
+                <span class="tag green">PM2.5</span>
+                <span class="tag green">PM10</span>
+                <span class="tag orange">주차</span>
+                <span class="tag orange">따릉이</span>
+            </div>
+            <div style="margin-top:12px;color:#999;font-size:14px;">
+                + Chart.js <code>tension: 0.4</code>와 결합하여 스무스한 곡선으로 표시
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 슬라이드 11: 스무딩 Before/After 목업 -->
+<div class="slide" id="s11">
+    <h2>데이터 스무딩 — Before / After</h2>
+    <div class="slide-subtitle">가중 이동평균(window=7) + tension: 0.4 적용 전후 비교</div>
+    <div style="display:flex;gap:32px;flex:1;min-height:0;">
+        <!-- Before -->
+        <div style="flex:1;display:flex;flex-direction:column;">
+            <div class="mockup-container" style="flex:1;">
+                <div class="mockup-header">
+                    <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+                    <div class="url-bar">Before — 원본 데이터</div>
+                </div>
+                <div class="mockup-main-chart">
+                    <div class="mc-title">👥 인구 추이 (원본)</div>
+                    <div class="mc-sub">10분마다 계단식 변화</div>
+                    <div class="mockup-chart-area">
+                        <svg width="100%" height="100%" viewBox="0 0 500 180" preserveAspectRatio="none" style="position:absolute;top:0;left:0;">
+                            <line x1="0" y1="45" x2="500" y2="45" stroke="#f0f0f0" stroke-width="0.6"/>
+                            <line x1="0" y1="90" x2="500" y2="90" stroke="#f0f0f0" stroke-width="0.6"/>
+                            <line x1="0" y1="135" x2="500" y2="135" stroke="#f0f0f0" stroke-width="0.6"/>
+                            <!-- 계단식 데이터 (꺾이는 선) -->
+                            <polyline points="0,40 30,40 30,42 60,42 60,38 90,38 90,45 120,45 120,80 150,80 150,82 180,82 180,78 210,78 210,85 240,85 240,120 270,120 270,118 300,118 300,125 330,125 330,100 360,100 360,95 390,95 390,105 420,105 420,140 450,140 450,138 480,138 500,142" fill="none" stroke="#FF6B6B" stroke-width="2" stroke-linejoin="miter"/>
+                            <polyline points="0,100 30,100 30,102 60,102 60,98 90,98 90,105 120,105 120,130 150,130 150,132 180,132 180,128 210,128 210,135 240,135 240,155 270,155 270,153 300,153 300,158 330,158 330,145 360,145 360,142 390,142 390,148 420,148 420,165 450,165 450,163 480,163 500,167" fill="none" stroke="#2196F3" stroke-width="2" stroke-linejoin="miter"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+            <div class="mockup-side-label" style="color:#FF6B6B;">계단식 · 노이즈 많음 · 추세 파악 어려움</div>
+        </div>
+        <!-- After -->
+        <div style="flex:1;display:flex;flex-direction:column;">
+            <div class="mockup-container" style="flex:1;">
+                <div class="mockup-header">
+                    <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+                    <div class="url-bar">After — 스무딩 적용</div>
+                </div>
+                <div class="mockup-main-chart">
+                    <div class="mc-title">👥 인구 추이 (스무딩)</div>
+                    <div class="mc-sub">가중 이동평균 + tension 0.4</div>
+                    <div class="mockup-chart-area">
+                        <svg width="100%" height="100%" viewBox="0 0 500 180" preserveAspectRatio="none" style="position:absolute;top:0;left:0;">
+                            <line x1="0" y1="45" x2="500" y2="45" stroke="#f0f0f0" stroke-width="0.6"/>
+                            <line x1="0" y1="90" x2="500" y2="90" stroke="#f0f0f0" stroke-width="0.6"/>
+                            <line x1="0" y1="135" x2="500" y2="135" stroke="#f0f0f0" stroke-width="0.6"/>
+                            <defs>
+                                <linearGradient id="smoothGrad" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stop-color="#FF6B6B" stop-opacity="0.10"/>
+                                    <stop offset="100%" stop-color="#FF6B6B" stop-opacity="0.01"/>
+                                </linearGradient>
+                            </defs>
+                            <path d="M0,90 C16,82 33,50 62,32 C90,18 105,20 125,45 C142,72 155,115 175,135 C192,148 208,145 225,112 C242,78 255,38 275,25 C295,15 308,18 325,42 C342,72 355,115 375,132 C392,145 408,140 425,108 C442,72 455,36 472,24 C485,16 495,20 500,25 L500,45 C495,42 485,36 472,45 C455,58 442,95 425,128 C408,155 392,162 375,152 C355,135 342,95 325,65 C308,42 295,36 275,48 C255,62 242,102 225,132 C208,158 192,164 175,155 C155,138 142,98 125,70 C105,45 90,40 62,55 C33,72 16,108 0,115 Z" fill="url(#smoothGrad)"/>
+                            <path d="M0,90 C16,82 33,50 62,32 C90,18 105,20 125,45 C142,72 155,115 175,135 C192,148 208,145 225,112 C242,78 255,38 275,25 C295,15 308,18 325,42 C342,72 355,115 375,132 C392,145 408,140 425,108 C442,72 455,36 472,24 C485,16 495,20 500,25" fill="none" stroke="#FF6B6B" stroke-width="2.5"/>
+                            <path d="M0,115 C16,108 33,72 62,55 C90,40 105,45 125,70 C142,98 155,138 175,155 C192,164 208,158 225,132 C242,102 255,62 275,48 C295,36 308,42 325,65 C342,95 355,135 375,152 C392,162 408,155 425,128 C442,95 455,58 472,45 C485,36 495,42 500,45" fill="none" stroke="#2196F3" stroke-width="2.5"/>
+                        </svg>
+                        <div style="position:absolute;right:6px;top:3px;display:flex;gap:10px;font-size:7px;color:#999;">
+                            <span><span style="color:#2196F3;">□</span> 최소</span>
+                            <span><span style="color:#FF6B6B;">□</span> 최대</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="mockup-side-label" style="color:#4CAF50;">부드러운 곡선 · 추세 명확 · 시각적 완성도 ↑</div>
+        </div>
+    </div>
+</div>
+
+<!-- 슬라이드 12: 섹션 4 — 추가 구현 기능 -->
+<div class="slide section-slide" id="s12">
+    <div class="section-number">04</div>
+    <h2>배포 환경 변경</h2>
+    <div class="section-desc">Netlify → Cloudflare Pages 마이그레이션</div>
+</div>
+
+<!-- 슬라이드 13: Netlify → Cloudflare 마이그레이션 -->
+<div class="slide" id="s13">
+    <h2>배포 환경 변경: Netlify → Cloudflare Pages</h2>
+    <div class="slide-subtitle">무료 크레딧 제한 → 대역폭 무제한 플랫폼으로 이전</div>
+    <div class="content-grid">
+        <div class="content-box">
+            <h3>❌ Netlify 문제점</h3>
+            <ul>
+                <li>무료 플랜 대역폭: <span class="highlight-red">100GB/월</span> 제한</li>
+                <li>크레딧 소진 시 사이트 전체 정지 (503 에러)</li>
+                <li>Scheduled Function도 함께 중단 → 데이터 수집 불가</li>
+                <li>매월 초 리셋 대기 or 유료 전환($19/월) 필요</li>
+            </ul>
+        </div>
+        <div class="content-box">
+            <h3>✅ Cloudflare Pages 장점</h3>
+            <ul>
+                <li>대역폭: <span class="highlight-green">무제한 (Unlimited)</span></li>
+                <li>Workers 무료: 10만 회/일</li>
+                <li>글로벌 CDN으로 응답 속도 빠름</li>
+                <li>기존 Supabase DB 그대로 유지 (URL·키 동일)</li>
+            </ul>
+        </div>
+        <div class="content-box" style="grid-column: 1 / -1;">
+            <h3>🔄 마이그레이션 과정</h3>
+            <div class="flow">
+                <div class="flow-item" style="border-color:rgba(255,107,107,0.4);">Netlify<br><span style="font-size:12px;color:#FF6B6B;">크레딧 소진 · 정지</span></div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-item">코드 동일 유지<br><span style="font-size:12px;color:#999;">HTML/CSS/JS</span></div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-item" style="border-color:rgba(76,175,80,0.4);">Cloudflare Pages<br><span style="font-size:12px;color:#4CAF50;">대역폭 무제한</span></div>
+            </div>
+            <div class="compare-row" style="margin-top:16px;">
+                <div class="compare-card">
+                    <div class="label">이전 URL</div>
+                    <div class="value" style="font-size:13px;text-decoration:line-through;color:#FF6B6B;">seoul-city-dashboard.netlify.app</div>
+                </div>
+                <div class="compare-card">
+                    <div class="label">현재 URL</div>
+                    <div class="value" style="font-size:13px;color:#4CAF50;">seoul-city-dashboard.pages.dev</div>
+                </div>
+            </div>
+            <div style="margin-top:12px;color:#999;font-size:14px;text-align:center;">
+                Supabase DB는 별개 서비스이므로 데이터 손실 없이 이전 완료
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 슬라이드 14: 섹션 5 -->
+<div class="slide section-slide" id="s14">
+    <div class="section-number">05</div>
+    <h2>시스템 모듈화 구축</h2>
+    <div class="section-desc">어댑터 패턴으로 데이터 소스만 교체하면 같은 시각화 재활용할 수 있는 구조를 직접 설계·제작</div>
+</div>
+
+<!-- 슬라이드 15: 모듈화 개념 -->
+<div class="slide" id="s15">
+    <h2>시스템 모듈화 — 구축한 핵심 구조</h2>
+    <div class="slide-subtitle">데이터가 바뀌어도 시각화 코드를 재사용할 수 있도록 직접 설계·제작</div>
+    <div class="content-grid single">
+        <div>
+            <div class="key-point" style="font-size:19px;">
+                Python의 <code>from, import</code>처럼 — API or Data만 넣으면<br>
+                이전에 만든 그래프가 그대로 그려지는 시스템
+            </div>
+
+            <div class="flow" style="margin:36px 0;">
+                <div class="flow-item">어댑터<br><span style="font-size:12px;color:#999;">데이터 수집</span></div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-item">Supabase DB<br><span style="font-size:12px;color:#999;">통일된 저장소</span></div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-item">History API<br><span style="font-size:12px;color:#999;">데이터 조회</span></div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-item">대시보드<br><span style="font-size:12px;color:#999;">차트 시각화</span></div>
+            </div>
+
+            <div style="display:flex;align-items:center;justify-content:center;margin-bottom:32px;gap:0;">
+                <div style="padding:14px 22px;text-align:center;"><span class="highlight-red" style="font-size:18px;">↑ 여기만 다름</span></div>
+                <div style="padding:0 8px;font-size:24px;visibility:hidden;">→</div>
+                <div style="padding:14px 22px;text-align:center;"></div>
+                <div style="padding:0 8px;font-size:24px;visibility:hidden;">→</div>
+                <div style="padding:14px 22px;text-align:center;"><span class="highlight-green" style="font-size:18px;">↑ 나머지는 100% 재활용</span></div>
+                <div style="padding:0 8px;font-size:24px;visibility:hidden;">→</div>
+                <div style="padding:14px 22px;text-align:center;"></div>
+            </div>
+
+            <div class="content-box">
+                <h3>같은 점 (대부분)</h3>
+                <div style="display:flex;gap:16px;flex-wrap:wrap;">
+                    <span class="tag green">DB 구조 (Supabase)</span>
+                    <span class="tag green">History API</span>
+                    <span class="tag green">Chart.js 시각화</span>
+                    <span class="tag green">대시보드 UI</span>
+                    <span class="tag green">배포 (Cloudflare)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 슬라이드 16: 어댑터 비교 -->
+<div class="slide" id="s16">
+    <h2>시스템 모듈화 — 제작한 3가지 어댑터</h2>
+    <div class="slide-subtitle">데이터 소스에 따라 어댑터만 교체하면 되도록 구현</div>
+    <div class="content-grid single">
+        <div>
+            <table>
+                <tr>
+                    <th style="width:120px;">방식</th>
+                    <th>어댑터</th>
+                    <th>입력</th>
+                    <th>특징</th>
+                </tr>
+                <tr>
+                    <td><span class="highlight">API</span></td>
+                    <td><code>collect-data.js</code> (cron)</td>
+                    <td>서울시 API 호출</td>
+                    <td>10분마다 자동 수집</td>
+                </tr>
+                <tr>
+                    <td><span class="highlight-orange">CSV</span></td>
+                    <td><code>csv-uploader.py</code> (배치)</td>
+                    <td>CSV 파일 읽기</td>
+                    <td>일괄 업로드</td>
+                </tr>
+                <tr>
+                    <td><span class="highlight-green">카메라</span></td>
+                    <td><code>yolo-inserter.py</code> (실시간)</td>
+                    <td>YOLO 분석 결과</td>
+                    <td>실시간 DB insert</td>
+                </tr>
+            </table>
+
+            <div style="margin-top:36px;">
+                <h3 style="color:#667eea;font-size:20px;margin-bottom:16px;">활용 예시: 성심당 대기열 프로젝트</h3>
+                <div class="flow">
+                    <div class="flow-item">📷 카메라/YOLO<br><span style="font-size:12px;color:#999;">사람 감지·카운팅</span></div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-item">📡 데이터 전송<br><span style="font-size:12px;color:#999;">DB insert</span></div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-item">🗄️ DB 저장<br><span style="font-size:12px;color:#999;">Supabase</span></div>
+                    <div class="flow-arrow">→</div>
+                    <div class="flow-item">📊 웹 대시보드<br><span style="font-size:12px;color:#999;">실시간 표시</span></div>
+                </div>
+                <div style="text-align:center;color:#999;margin-top:8px;font-size:14px;">└ QR로 대기 URL 접속</div>
+            </div>
+
+            <div class="content-box" style="margin-top:24px;">
+                <h3>다른 점 (딱 2가지)</h3>
+                <table>
+                    <tr>
+                        <th></th>
+                        <th>서울 API</th>
+                        <th>카메라/YOLO</th>
+                    </tr>
+                    <tr>
+                        <td style="font-weight:600;">1. 데이터 수집</td>
+                        <td><code>collect-data.js</code><br><span style="color:#999;font-size:13px;">cron → 서울시 API 호출</span></td>
+                        <td><code>yolo-inserter.py</code><br><span style="color:#999;font-size:13px;">Python → DB insert</span></td>
+                    </tr>
+                    <tr>
+                        <td style="font-weight:600;">2. 테이블 컬럼</td>
+                        <td><code>population_max</code>, <code>bike_available</code> 등</td>
+                        <td><code>waiting_count</code>, <code>est_wait_min</code> 등</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 슬라이드 17: 마무리 -->
+<div class="slide section-slide" id="s17">
+    <h2>정리</h2>
+    <div style="text-align:left;max-width:700px;margin-top:32px;">
+        <div style="display:flex;flex-direction:column;gap:16px;">
+            <div style="display:flex;align-items:flex-start;gap:16px;">
+                <span style="font-size:22px;font-weight:900;color:#667eea;">01</span>
+                <div>
+                    <div style="font-size:17px;font-weight:600;">싱글 페이지 레이아웃</div>
+                    <div style="font-size:13px;color:#999;">스크롤 없는 100vh 대시보드 완성</div>
+                </div>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:16px;">
+                <span style="font-size:22px;font-weight:900;color:#667eea;">02</span>
+                <div>
+                    <div style="font-size:17px;font-weight:600;">대화형 시각화</div>
+                    <div style="font-size:13px;color:#999;">드래그 줌 + 브러시 + 크로스헤어 + 더블클릭 리셋</div>
+                </div>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:16px;">
+                <span style="font-size:22px;font-weight:900;color:#667eea;">03</span>
+                <div>
+                    <div style="font-size:17px;font-weight:600;">데이터 스무딩</div>
+                    <div style="font-size:13px;color:#999;">가중 이동평균(window=7)으로 부드러운 그래프</div>
+                </div>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:16px;">
+                <span style="font-size:22px;font-weight:900;color:#667eea;">04</span>
+                <div>
+                    <div style="font-size:17px;font-weight:600;">배포 환경 변경</div>
+                    <div style="font-size:13px;color:#999;">Netlify → Cloudflare Pages 마이그레이션</div>
+                </div>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:16px;">
+                <span style="font-size:22px;font-weight:900;color:#667eea;">05</span>
+                <div>
+                    <div style="font-size:17px;font-weight:600;">시스템 모듈화 구축</div>
+                    <div style="font-size:13px;color:#999;">어댑터 패턴으로 서울/대전/카메라 데이터 통합 가능하도록 직접 제작</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 네비게이션 -->
+<div class="nav">
+    <button onclick="prevSlide()">← 이전</button>
+    <button onclick="nextSlide()">다음 →</button>
+</div>
+<div class="page-indicator" id="pageIndicator">1 / 17</div>
+
+<script>
+    let current = 0;
+    const slides = document.querySelectorAll('.slide');
+    const total = slides.length;
+
+    function showSlide(n) {
+        slides[current].classList.remove('active');
+        current = (n + total) % total;
+        slides[current].classList.add('active');
+        document.getElementById('pageIndicator').textContent = `${current + 1} / ${total}`;
+    }
+
+    function nextSlide() { showSlide(current + 1); }
+    function prevSlide() { showSlide(current - 1); }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); nextSlide(); }
+        if (e.key === 'ArrowLeft') { e.preventDefault(); prevSlide(); }
+        if (e.key === 'Home') { e.preventDefault(); showSlide(0); }
+        if (e.key === 'End') { e.preventDefault(); showSlide(total - 1); }
+    });
+</script>
+
+</body>
+</html>
